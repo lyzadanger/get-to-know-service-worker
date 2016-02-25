@@ -192,6 +192,7 @@
         </section>
 
         <section>
+
           <section>
             <h2>The Lifestyle of a Service Worker: Registering</h2>
             <p>First off, your app or site needs to "connect itself up" to a service worker. It needs to say, hey, I want this service worker to control me.</p>
@@ -253,11 +254,13 @@ navigator.serviceWorker.register('/serviceWorker.js', {
 
         </section>
 
+        <!-- SECTION --->
+
         <section>
 
           <section>
             <h2>Lifestyle of a Service Worker: Fetches</h2>
-            <p>Once a service worker is registered to a scope, it can listen for any <em>fetch</em> events triggered by the browser within that scope.</p>
+            <p>Once a service worker has been installed and activated, it can listen for any <em>fetch</em> events triggered by the browser within its scope.</p>
             <p class="fragment">That is, any time the browser wants to fetch an asset that is within the path defined by <em>scope</em>, the registered service worker can hear all about it.</p>
           </section>
 
@@ -273,6 +276,12 @@ navigator.serviceWorker.register('/serviceWorker.js', {
 
             <p class="fragment">Basically, a service worker gets to <em>decide</em> how to fulfill requests from the browser, if it so chooses.</p>
           </section>
+
+        </section>
+
+        <!-- SECTION -->
+
+        <section>
 
           <section>
             <h2>Structuring the Service Worker</h2><pre><code class="hljs">
@@ -292,6 +301,114 @@ navigator.serviceWorker.register('/serviceWorker.js', {
         </section>
       </section>
 
+      <!-- SECTION -->
+
+      <section>
+
+        <section>
+          <h2>Handling Fetches</h2>
+          <p>To handle fetches in our theoretical content-heavy site example:</p>
+          <pre><code class="hljs">
+  self.addEventListener('fetch', event => {
+    // 1. Figure out if we should respond to this event at all
+    //    (or let browser do it)
+    // 2. If it's a request for content, take network-first strategy
+    // 3. If it's a request for static assets, take cache-first strategy
+  });
+  </code></pre>
+        </section>
+
+        <section>
+          <h3>Should We Respond to this Fetch?</h3>
+          <p>Some questions we might want to consider when determining whether to handle a fetch:</p>
+          <ul>
+            <li class="fragment">Is the resource being requested served from the same origin?</li>
+            <li class="fragment">Is the resource being requested something we ever want to cache?</li>
+            <li class="fragment">What type of resource is being requested?</li>
+            <li class="fragment">What is the HTTP method of this request? (hint: caching <em>DELETE</em> or <em>POST</em> requests might not be advisable)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>event.request</h3>
+          <p>The fetch handler is invoked for each resource request the browser makes. A <em>Request</em> object is available to the fetch handler as <em>event.request</em>. We can use it to answer some of our questions:</p>
+          <pre><code class="hljs">
+self.addEventListener('fetch', event => {
+  // event.request is a reference to the Request object
+  // representing the request for this resource
+  var request = event.request;
+
+  var requestMethod = request.method; // e.g. 'GET'
+  var requestOrigin = new URL(request.url).origin;
+  var acceptHeader = request.headers.get('Accept'); // MIME-type e.g.
+});
+</code></pre>
+          <p><small>See also: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Request">MDN documentation on the <em>Request</em> interface</a>.</small></p>
+        </section>
+
+        <section>
+          <h3>Identifying Requests for Content</h3>
+        </section>
+
+        <section>
+          <h3>Implementing the Network Strategies</h3>
+        </section>
+
+        <section>
+          <h3>Fetch-handling Code so Far...</h3>
+        </section>
+
+        <section>
+          <h3>Handling Fetches: Some Things to Consider</h3>
+        </section>
+
+      </section>
+
+      <!-- <section>
+        <section>
+          <h2>Managing Caches</h2>
+        </section>
+
+        <section>
+          <h3>Pre-Caching Static Assets</h3>
+        </section>
+
+        <section>
+          <h3>Read-Through Caching</h3>
+        </section>
+
+        <section>
+          <h3>Retrieving from Cache</h3>
+        </section>
+
+        <section>
+          <h3>Keeping Caches Tidy</h3>
+        </section>
+
+        <section>
+          <h3>Keeping Caches From Being Huge</h3>
+        </section>
+
+      </section>
+
+      <section>
+        <section>
+          <h2>Offline-First</h2>
+        </section>
+
+        <section>
+          <h3>Pre-Caching</h3>
+        </section>
+
+        <section>
+          <h3>Offline Fallback</h3>
+        </section>
+
+        <section>
+          <h3>Offline Fallback Resources</h3>
+        </section>
+
+      </section> -->
 			</div>
 
 		</div>
