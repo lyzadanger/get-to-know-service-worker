@@ -4,10 +4,7 @@
 	<head>
 		<meta charset="utf-8">
 
-		<title>reveal.js – The HTML Presentation Framework</title>
-
-		<meta name="description" content="A framework for easily creating beautiful presentations using HTML">
-		<meta name="author" content="Hakim El Hattab">
+		<title>@lyzadanger: Fun with Service Workers</title>
 
 		<meta name="apple-mobile-web-app-capable" content="yes">
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,7 +12,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
 
 		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/sky.css" id="theme">
+		<link rel="stylesheet" href="css/theme/solarized.css" id="theme">
 
 		<!-- Code syntax highlighting -->
 		<link rel="stylesheet" href="lib/css/zenburn.css">
@@ -347,68 +344,314 @@ self.addEventListener('fetch', event => {
         </section>
 
         <section>
-          <h3>Identifying Requests for Content</h3>
+          <h3>Fetch Handler</h3>
+          <pre><code class="hljs">
+self.addEventListener('fetch', event => {
+  // Determine whether we should respond to this fetch
+  if (!shouldHandleFetch(event)) { return; }
+
+  if (fetchResourceType(event) === 'content') {
+    // Use a network-first strategy for "content"
+    event.respondWith(
+      fetch(request)
+        .catch(() => fetchFromCache(event))
+    );
+  } else {
+    // Use a cache-first strategy for everything else
+    event.respondWith(
+      fetchFromCache(event)
+        .catch(() => fetch(request))
+    );
+  }
+});
+</code></pre>
         </section>
 
         <section>
-          <h3>Implementing the Network Strategies</h3>
+          <h3>"Content", Eh?</h3>
+          <p>Identifying requests for content:</p>
+<pre><code class="hljs">
+// Hypothetical function to determine if request is for content
+function fetchResourceType(event) {
+  return (event.request.headers
+    .get('Accept')
+    .indexOf('text/html') !== -1);
+}
+</code></pre>
+          <p>...and we'll treat everything else as "static".</p>
         </section>
 
         <section>
-          <h3>Fetch-handling Code so Far...</h3>
-        </section>
+          <h3>request.type</h3>
+          <p>New <em>navigation</em> type coming soon...</p>
+          <p>This will help ID content better than hackery with <em>Accepts</em> headers.</p>
 
-        <section>
-          <h3>Handling Fetches: Some Things to Consider</h3>
         </section>
-
       </section>
 
-      <!-- <section>
+      <!-- SECTION -->
+      <section>
         <section>
-          <h2>Managing Caches</h2>
+          <h2>Fetch and Cache APIs</h2>
+
+          <ul>
+            <li class="fragment">The <em>fetch</em> method lets us explicitly fetch things from the network.</li>
+            <li class="fragment">The <em>Cache</em> interface allows us to read, write and delete caches and the items in them.</li>
+            <li class="fragment"><em>cache</em> and <em>fetch</em> are both available in top-level scope within service worker.</li>
+            <li class="fragment">Both make heavy use of Promises.</li>
+          </ul>
         </section>
 
         <section>
-          <h3>Pre-Caching Static Assets</h3>
+          <h3>The Fetch API</h3>
+  <pre><code class="hljs">
+    // fetch handler close-up: Our network-first strategy
+    event.respondWith(
+      fetch(request)
+        .catch(() => fetchFromCache(event))
+    );
+  </code></pre>
+          <ul>
+            <li class="fragment"><em>fetch</em> will return a Promise that resolves to a <em>Response</em> object or rejects if the network fetch fails.</li>
+            <li class="fragment">Thus, we can attempt a fetch, and if the Promise rejects, look for the resource in cache (<em>fetchFromCache</em> is our own function).</li>
+          </ul>
         </section>
 
         <section>
-          <h3>Read-Through Caching</h3>
-        </section>
-
-        <section>
-          <h3>Retrieving from Cache</h3>
-        </section>
-
-        <section>
-          <h3>Keeping Caches Tidy</h3>
-        </section>
-
-        <section>
-          <h3>Keeping Caches From Being Huge</h3>
+          <h3>The cache API</h3>
+<pre><code class="hljs">
+function fetchFromCache (event) {
+  return caches.match(event.request).then(response => {
+    if (!response) {
+      throw Error(`${event.request.url} not found in cache`);
+    }
+    return response;
+  });
+}
+</code></pre>
+          <ul>
+            <li class="fragment"><em>caches.match</em> will look for the resource indicated by <em>event.request</em> in all of the caches visible to this service worker.</li>
+            <li class="fragment">The returned Promise resolves to a <em>Response</em> object if the resource was found in cache, or <em>undefined</em> if not.</li>
+            <li class="fragment">This example function <em>throws</em> if the response is falsy, which allows us to use a <em>catch</em> in our Promise chain.</li>
+          </ul>
         </section>
 
       </section>
 
       <section>
         <section>
-          <h2>Offline-First</h2>
+          <h2>Working with Caches</h2>
+          <ul>
+            <li class="fragment">How do things get into the cache in the first place, so that we can get them back out again?</li>
+            <li class="fragment">Which things go in which cache?</li>
+            <li class="fragment">Can we put things into a cache without having an associated fetch? Like, can we stick arbitrary stuff in caches?</li>
+            <li class="fragment">Once something is put in a cache, does it wallow there forever?</li>
+          </ul>
         </section>
 
         <section>
-          <h3>Pre-Caching</h3>
+          <h3>How Do We Get Stuff into the Cache in the First Place?</h3>
+          <h4>Option 1: Read-through Caching</h4>
+          <p>Expanding on our network-first strategy for content:</p>
+<pre><code class="hljs">
+if (resourceType === 'content') {
+    event.respondWith(
+      fetch(request)
+        .then(response => addToCache('content', request, response))
+        .catch(() => fetchFromCache(event));
+    );
+  }
+</code></pre>
+          <p>On a successful <em>fetch</em>, we immediately invoke <em>addToCache</em> (our own function). That function should, ah, add the Response to a cache so we have it for later use.</p>
+          <p>This strategy is called <em>read-through caching</em>.
         </section>
 
         <section>
-          <h3>Offline Fallback</h3>
+          <h3>Adding a Response to Cache</h3>
+<pre><code class="hljs">
+function addToCache (cacheKey, request, response) {
+  // Never cache a Response that is an error!
+  if (response.ok) {
+    // The response body can only be "used" once,
+    // so we need to clone it before stashing it
+    var copy = response.clone();
+    // Open the cache indicated by cacheKey and
+    // stuff an entry (request/response) into it
+    caches.open(cacheKey).then( cache => {
+      cache.put(request, copy);
+    });
+  }
+  // Behave nicely for Promise chaining
+  return response;
+}
+</code></pre>
         </section>
 
         <section>
-          <h3>Offline Fallback Resources</h3>
+          <h3>Cache Names...?</h3>
+          <p>Q. What are caches called? How do I know which cache to put something in?</p>
+          <p class="fragment">A. It's arbitrary! You can give you caches any string names you feel like.</p>
         </section>
 
-      </section> -->
+        <section>
+          <h3>How Do We Get Stuff into the Cache in the First Place?</h3>
+          <h4>Option 2: Pre-Caching Static Assets</h4>
+          <p>Another way to get things into cache so you can retrieve them later is to <em>pre-cache</em> assets during the <em>install</em> phase.</p>
+<pre><code class="hljs">
+  self.addEventListener('install', event => {
+    function onInstall (event) {
+      // Notice the arbitrary choice to call the cache
+      // for pre-cache items 'static'
+      return caches.open('static')
+        .then(cache => cache.addAll(anArrayOfPaths);
+    }
+    // event.waitUntil will save your bacon if you need to do anything
+    // asynchronous
+    event.waitUntil(
+      onInstall(event).then( () => self.skipWaiting() )
+    );
+  });
+</code></pre>
+        </section>
+
+        <section>
+          <h3>Caching Things Whenever</h3>
+          <ul>
+            <li class="fragment">You can add things to a cache using the <em>cache.put</em> and <em>cache.add</em>.</li>
+            <li class="fragment"><em>cache.put</em> lets you provide a Response object (useful for read-through caching).</li>
+            <li class="fragment"><em>cache.add</em> takes a Request or URL and fetches the Response for the cache over the network (useful for pre-caching).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Install Handler</h3>
+          <p><em>cache.addAll</em> is similar to <em>cache.add</em> but takes an array of items (URLs or Request objects), e.g.:</p>
+<pre><code class="hljs">
+  ['/images/lyza.gif',
+   '/css/styles.css',
+   '/js/site.js',
+   '/offline/',
+   '/']
+</code></pre>
+          <p>Pre-caching an <em>application shell</em> is a technique for building an offline-first progressive web app.</p>
+        </section>
+
+        <section>
+          <h3>Install Handler</h3>
+          <h4>self.skipWaiting</h4>
+          <p>This will cause the <em>activate</em> phase to happen immediately, even if there are open windows still controlled by an old version of the service worker.</p>
+        </section>
+
+        <section>
+          <h3>Keeping Caches Tidy</h3>
+          <p>You can use the <em>activate</em> phase to clean up after old versions of your service worker.</p>
+          <p>One tactic is to name caches with a version key so that you can delete any (old/stale) cache that isn't named with that version key.</p>
+          <p>You can <a href="https://github.com/lyzadanger/serviceworker-example/blob/3971f598334ea8b908c2bbe15fc584c79f95e1f8/03-versioning/serviceWorker.js">see activate-phase cleanup in this code example.</a></p>
+        </section>
+      </section>
+
+<!-- SECTION -->
+
+      <section>
+        <section>
+          <h2>Offline Support</h2>
+          <p>The fetch strategies we've implemented accomplish the following:</p>
+          <ul>
+            <li class="fragment">Pre-caching static assets that we know we need often (app shell)</li>
+            <li class="fragment">Read-through caching for lazy-caching other items</li>
+            <li class="fragment">Performance boost by using cache-first network strategy for static assets</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Offline Fallbacks</h3>
+          <p>But what if both things attempted during fetch fail?:</p>
+          <ul>
+            <li class="fragment">Fetch from network</li>
+            <li class="fragment">Fetch from cache</li>
+          </ul>
+          <p class="fragment">That is, if a user is offline and requests an asset that hasn't yet been cached...</p>
+        </section>
+
+        <section>
+          <h3>Offline Fallbacks</h3>
+          <p>We need offline fallbacks!</p>
+          <ul>
+            <li class="fragment">For "content", this can be an offline page</li>
+            <li class="fragment">For images, this can be an offline image</li>
+            <li class="fragment">(For everything else, we'll just let the request fail)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Offline Fallbacks</h3>
+          <p>Adding one more line to the network-first strategy in the fetch handler:</p>
+<pre><code class="hljs">
+if (resourceType === 'content') {
+    event.respondWith(
+      fetch(request)
+        .then(response => addToCache('content', request, response))
+        .catch(() => fetchFromCache(event))
+        .catch(() => offlineResponse('content', opts));
+    );
+  }
+</code></pre>
+        <p>(You'd add this third line to the cache-first strategy, too)</p>
+        </section>
+
+        <section>
+          <h3>Providing an Offline Resource</h3>
+<pre><code class="hljs">
+var offlineImage = ''; // Just a moment
+function offlineResponse (resourceType) {
+  if (resourceType === 'image') {
+    // Return an SVG that indicates we're offline
+    return new Response(offlineImage,
+      { headers: { 'Content-Type': 'image/svg+xml' } }
+    );
+  } else if (resourceType === 'content') {
+    // Return the offline page
+    // Make sure this page is pre-cached during the install phase!
+    return caches.match('/offline/');
+  }
+  return undefined;
+}
+</code></pre>
+        </section>
+
+        <section>
+          <h3>Offline Fallback Image</h3>
+<pre><code class="hljs">
+var offlineImage = '<svg role="img" aria-labelledby="offline-title"'
+    + ' viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">'
+    + '<title id="offline-title">Offline</title>'
+    + '<g fill="none" fill-rule="evenodd"><path fill="#D8D8D8" d="M0 0h400v300H0z"/>'
+    + '<text fill="#9B9B9B" font-family="Times New Roman,Times,serif" font-size="72" font-weight="bold">'
+    + '<tspan x="93" y="172">offline</tspan></text></g></svg>';
+</pre></code>
+        <p>SVGs are cool! You can return one as a string (with the proper headers, of course)!</p>
+        </section>
+      </section>
+
+<!-- SECTION -->
+      <section>
+        <h2>What have we done here?</h2>
+        <ul>
+          <li class="fragment">Pre-cached static assets (application shell)</li>
+          <li class="fragment">Implemented different strategies for different kinds of fetches</li>
+          <li class="fragment">Implemented read-through caching</li>
+          <li class="fragment">Cleaned up old caches when versioning the SW</li>
+          <li class="fragment">Provided an offline page</li>
+          <li class="fragment">Provided an offline image</li>
+        </ul>
+      </section>
+
+<!-- SECTION -->
+      <section>
+        <h2>All Together Now</h2>
+        <p>See all the code in one place in this <a href="https://github.com/lyzadanger/serviceworker-example/blob/3971f598334ea8b908c2bbe15fc584c79f95e1f8/03-versioning/serviceWorker.js">example service worker script.</a></p>
+        <p>Read <a href="https://www.smashingmagazine.com/2016/02/making-a-service-worker/">this <em>Smashing Magazine</em></a> article for even more details.</p>
+      </section>
 			</div>
 
 		</div>
