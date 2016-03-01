@@ -145,7 +145,7 @@
           <section>
             <iframe src="https://www.lyza.com" width="1020" height="600"></iframe>
           </section>
-          
+
         </section>
 
         <!-- SECTION -->
@@ -201,30 +201,39 @@
 
         </section>
 
+        <!-- SECTION -->
+
         <section>
 
           <section>
             <h2>The Lifestyle of a Service Worker: Registering</h2>
-            <p>First off, your app or site needs to "connect itself up" to a service worker. It needs to say, hey, I want this service worker to control me.</p>
+            <p>First off, your app or site needs to "connect itself up" to a service worker.</p>
             <ul>
               <li class="fragment">A service worker gets <em>registered</em> against a <em>scope</em>.</li>
               <li class="fragment">Your application's JavaScript code does the registering.</li>
             </ul>
           </section>
 
-          <section>
-            <h3>Registering a Service Worker</h3>
-            <pre><code class="hljs">
-navigator.serviceWorker.register('/serviceWorker.js', {
-  scope: '/blog'
-});
-            </code></pre>
-            <p>This code hooks up:
-            <ul>
-              <li class="fragment">the <em>/serviceWorker.js</em> script...</li>
-              <li class="fragment">to control the <em>/blog</em> scope...</li>
-              <li class="fragment">Once registered, the service worker will have control over any page served under <em>/blog</em> from your site's origin.</li>
-            </ul>
+          <section data-markdown>
+            <script type="text/template">
+              ## Registering a Service Worker
+
+              ````javascript
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/serviceWorker.js', {
+                  scope: '/blog'
+                });
+              }
+              ````
+
+              This code:
+
+              * Registers the script in the file `/serviceWorker.js`...
+              * to control the `/blog` `scope`
+              * Once registered, the service worker will have control over assets served under `/blog`
+
+            </script>
+
           </section>
 
           <section>
@@ -236,7 +245,7 @@ navigator.serviceWorker.register('/serviceWorker.js', {
             <h3>Registering a Service Worker...</h3>
 
             <ul>
-              <li class="fragment">...is the job of external scripts on your site</li>
+              <li class="fragment">...is done from your application or site JS</li>
               <li class="fragment">...causes the browser to "hang on" to that service worker until it sees that it has changed</li>
             </ul>
           </section>
@@ -259,7 +268,7 @@ navigator.serviceWorker.register('/serviceWorker.js', {
           <section>
             <h3>Activate Phase</h3>
 
-            <p>The <em>activate</em> phase gives you a chance to clean up after previous versions of a service worker. It doesn't seem too useful when considering installing a brand-new service worker, but, trust me, it'll be useful to us soon.</p>
+            <p>The <em>activate</em> phase gives you a chance to clean up after previous versions of a service worker.</p>
           </section>
 
         </section>
