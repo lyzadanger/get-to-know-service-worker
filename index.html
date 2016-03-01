@@ -410,8 +410,8 @@ function fetchResourceType(event) {
           <h2>Fetch and Cache APIs</h2>
 
           <ul>
-            <li class="fragment">The <em>fetch</em> method lets us explicitly fetch things from the network.</li>
-            <li class="fragment">The <em>Cache</em> interface allows us to read, write and delete caches and the items in them.</li>
+            <li class="fragment">The <em><a href="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API">fetch</a></em> API lets us explicitly fetch things from the network.</li>
+            <li class="fragment">The <em><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache">Cache</a></em> interface of the SW API allows us to read, write and delete caches and the items in them.</li>
             <li class="fragment"><em>cache</em> and <em>fetch</em> are both available in top-level scope within service worker.</li>
             <li class="fragment">Both make heavy use of Promises.</li>
           </ul>
@@ -420,15 +420,20 @@ function fetchResourceType(event) {
         <section>
           <h3>The Fetch API</h3>
   <pre><code class="hljs">
-    // fetch handler close-up: Our network-first strategy
-    event.respondWith(
-      fetch(request)
-        .catch(() => fetchFromCache(event))
-    );
+function fetchFromCache(event) { /** ... **/ }
+
+self.addEventListener('fetch', event => {
+  // ...
+  // fetch handler close-up: Our network-first strategy
+  event.respondWith(
+    fetch(request).catch(() => fetchFromCache(event))
+  );
+  // ...
+});
   </code></pre>
           <ul>
             <li class="fragment"><em>fetch</em> will return a Promise that resolves to a <em>Response</em> object or rejects if the network fetch fails.</li>
-            <li class="fragment">Thus, we can attempt a fetch, and if the Promise rejects, look for the resource in cache (<em>fetchFromCache</em> is our own function).</li>
+            <li class="fragment">If the Promise rejects, look for the resource in cache.</li>
           </ul>
         </section>
 
@@ -455,7 +460,7 @@ function fetchFromCache (event) {
 
       <section>
         <section>
-          <h2>Working with Caches</h2>
+          <h2>Working with Caches, A Sort-of FAQ</h2>
           <ul>
             <li class="fragment">How do things get into the cache in the first place, so that we can get them back out again?</li>
             <li class="fragment">Which things go in which cache?</li>
