@@ -46,3 +46,7 @@ $selectionBackgroundColor: #134674;
 // Theme template ------------------------------
 @import "../template/theme";
 // ---------------------------------------------
+
+.reveal .slides p {
+  text-align: left;
+}
