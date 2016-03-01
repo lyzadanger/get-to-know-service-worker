@@ -627,8 +627,10 @@ function addToCache (cacheKey, request, response) {
         <section>
           <h3>Offline Fallbacks</h3>
           <p>Adding one more line to the network-first strategy in the fetch handler:</p>
-<pre><code class="hljs">
-if (resourceType === 'content') {
+<pre><code class="hljs">function offlineResponse { /** ... */ }
+self.addEentListener('fetch', event => {
+  // ...
+  if (resourceType === 'content') {
     event.respondWith(
       fetch(request)
         .then(response => addToCache('content', request, response))
@@ -636,14 +638,15 @@ if (resourceType === 'content') {
         .catch(() => offlineResponse('content', opts));
     );
   }
+  // ...
+});
 </code></pre>
         <p>(You'd add this third line to the cache-first strategy, too)</p>
         </section>
 
         <section>
           <h3>Providing an Offline Resource</h3>
-<pre><code class="hljs">
-var offlineImage = ''; // Just a moment
+<pre><code class="hljs">var offlineImage = '...';
 function offlineResponse (resourceType) {
   if (resourceType === 'image') {
     // Return an SVG that indicates we're offline
@@ -664,11 +667,13 @@ function offlineResponse (resourceType) {
           <h3>Offline Fallback Image</h3>
 <pre><code class="hljs">
 var offlineImage = '<svg role="img" aria-labelledby="offline-title"'
-    + ' viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">'
-    + '<title id="offline-title">Offline</title>'
-    + '<g fill="none" fill-rule="evenodd"><path fill="#D8D8D8" d="M0 0h400v300H0z"/>'
-    + '<text fill="#9B9B9B" font-family="Times New Roman,Times,serif" font-size="72" font-weight="bold">'
-    + '<tspan x="93" y="172">offline</tspan></text></g></svg>';
+  + ' viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">'
+  + '<title id="offline-title">Offline</title>'
+  + '<g fill="none" fill-rule="evenodd">'
+  + '<path fill="#D8D8D8" d="M0 0h400v300H0z"/>'
+  + '<text fill="#9B9B9B" font-family="Times New Roman,Times,serif"'
+  + 'font-size="72" font-weight="bold">'
+  + '<tspan x="93" y="172">offline</tspan></text></g></svg>';
 </pre></code>
         <p>SVGs are cool! You can return one as a string (with the proper headers, of course)!</p>
         </section>
@@ -692,6 +697,7 @@ var offlineImage = '<svg role="img" aria-labelledby="offline-title"'
         <h2>All Together Now</h2>
         <p>See all the code in one place in this <a href="https://github.com/lyzadanger/serviceworker-example/blob/3971f598334ea8b908c2bbe15fc584c79f95e1f8/03-versioning/serviceWorker.js">example service worker script.</a></p>
         <p>Read <a href="https://www.smashingmagazine.com/2016/02/making-a-service-worker/">this <em>Smashing Magazine</em></a> article for even more details.</p>
+        <h4><a href="https://twitter.com/lyzadanger">@lyzadanger</a> | <a href="https://www.lyza.com">Lyza.com</a></h4>
       </section>
 			</div>
 
