@@ -472,31 +472,39 @@ function fetchFromCache (event) {
         <section>
           <h3>How Do We Get Stuff into the Cache in the First Place?</h3>
           <h4>Option 1: Read-through Caching</h4>
-          <p>Expanding on our network-first strategy for content:</p>
-<pre><code class="hljs">
-if (resourceType === 'content') {
+<pre><code class="hljs">function addToCache(event) { /** ... **/ }
+
+self.addEventListener('fetch', event => {
+  // ...
+  if (resourceType === 'content') {
     event.respondWith(
       fetch(request)
         .then(response => addToCache('content', request, response))
         .catch(() => fetchFromCache(event));
     );
   }
+});
 </code></pre>
-          <p>On a successful <em>fetch</em>, we immediately invoke <em>addToCache</em> (our own function). That function should, ah, add the Response to a cache so we have it for later use.</p>
-          <p>This strategy is called <em>read-through caching</em>.
+          <p>On a successful <em>fetch</em>, we immediately add the Response to cache.</p>
+        </section>
+
+        <section>
+          <h3>Adding a Response to Cache</h3>
+          <p>Our <em>addToCache</em> function should:</p>
+          <ol>
+            <li class="fragment">Make sure the Response is a good one</li>
+            <li class="fragment">Clone the Response</li>
+            <li class="fragment">Open the cache we want to put it in</li>
+            <li class="fragment">Stick a new entry in that cache</li>
+          </ol>
         </section>
 
         <section>
           <h3>Adding a Response to Cache</h3>
 <pre><code class="hljs">
 function addToCache (cacheKey, request, response) {
-  // Never cache a Response that is an error!
   if (response.ok) {
-    // The response body can only be "used" once,
-    // so we need to clone it before stashing it
     var copy = response.clone();
-    // Open the cache indicated by cacheKey and
-    // stuff an entry (request/response) into it
     caches.open(cacheKey).then( cache => {
       cache.put(request, copy);
     });
@@ -505,6 +513,17 @@ function addToCache (cacheKey, request, response) {
   return response;
 }
 </code></pre>
+        </section>
+
+        <section>
+          <h3>response.ok</h3>
+          <p>Trust me! You don't want to cache a Response that isn't OK.</p>
+        </section>
+
+        <section>
+          <h3>Cloning Responses</h3>
+          <p>Q. What the heck <em>response.clone()</em>?</p>
+          <p class="fragment">A. The <em>Body</em> of a <em>Response</em> can only be used once. This Response object needs to be used twice: once to respond to the fetch event, once for the cache.</p>
         </section>
 
         <section>
@@ -517,55 +536,57 @@ function addToCache (cacheKey, request, response) {
           <h3>How Do We Get Stuff into the Cache in the First Place?</h3>
           <h4>Option 2: Pre-Caching Static Assets</h4>
           <p>Another way to get things into cache so you can retrieve them later is to <em>pre-cache</em> assets during the <em>install</em> phase.</p>
-<pre><code class="hljs">
-  self.addEventListener('install', event => {
-    function onInstall (event) {
-      // Notice the arbitrary choice to call the cache
-      // for pre-cache items 'static'
-      return caches.open('static')
-        .then(cache => cache.addAll(anArrayOfPaths);
-    }
-    // event.waitUntil will save your bacon if you need to do anything
-    // asynchronous
-    event.waitUntil(
-      onInstall(event).then( () => self.skipWaiting() )
-    );
-  });
+<pre><code class="hljs">self.addEventListener('install', event => {
+  var ourStaticItems = [ /** ... **/ ]; // Array of URLs
+  function onInstall (event) {
+    // Notice the choice to call the cache
+    // for pre-cache items 'static'
+    return caches.open('static')
+      .then(cache => cache.addAll(ourStaticItems);
+  }
+  event.waitUntil(
+    onInstall(event).then( () => self.skipWaiting() )
+  );
+});
 </code></pre>
         </section>
 
         <section>
+          <h3>event.waitUntil</h3>
+          <p><em>event.waitUntil</em> will save your bacon if you need to do something async during event handling.</p>
+      </section>
+
+      <section>
+        <h3>skipWaiting</h3>
+        <h4>self.skipWaiting</h4>
+        <p>This will cause the <em>activate</em> phase to happen immediately, even if there are open windows still controlled by an old version of the service worker.</p>
+      </section>
+
+        <section>
           <h3>Caching Things Whenever</h3>
           <ul>
-            <li class="fragment">You can add things to a cache using the <em>cache.put</em> and <em>cache.add</em>.</li>
+            <li class="fragment">You can add things to a cache using the <em><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache/put">cache.put</a></em> and <em><a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache/add">cache.add</a></em>.</li>
             <li class="fragment"><em>cache.put</em> lets you provide a Response object (useful for read-through caching).</li>
             <li class="fragment"><em>cache.add</em> takes a Request or URL and fetches the Response for the cache over the network (useful for pre-caching).</li>
           </ul>
         </section>
 
         <section>
-          <h3>Install Handler</h3>
+          <h3>cache.addAll</h3>
           <p><em>cache.addAll</em> is similar to <em>cache.add</em> but takes an array of items (URLs or Request objects), e.g.:</p>
-<pre><code class="hljs">
-  ['/images/lyza.gif',
+<pre><code class="hljs">var ourStatic Items = [
+   '/images/lyza.gif',
    '/css/styles.css',
    '/js/site.js',
    '/offline/',
-   '/']
+   '/'];
 </code></pre>
           <p>Pre-caching an <em>application shell</em> is a technique for building an offline-first progressive web app.</p>
         </section>
 
         <section>
-          <h3>Install Handler</h3>
-          <h4>self.skipWaiting</h4>
-          <p>This will cause the <em>activate</em> phase to happen immediately, even if there are open windows still controlled by an old version of the service worker.</p>
-        </section>
-
-        <section>
           <h3>Keeping Caches Tidy</h3>
           <p>You can use the <em>activate</em> phase to clean up after old versions of your service worker.</p>
-          <p>One tactic is to name caches with a version key so that you can delete any (old/stale) cache that isn't named with that version key.</p>
           <p>You can <a href="https://github.com/lyzadanger/serviceworker-example/blob/3971f598334ea8b908c2bbe15fc584c79f95e1f8/03-versioning/serviceWorker.js">see activate-phase cleanup in this code example.</a></p>
         </section>
       </section>
