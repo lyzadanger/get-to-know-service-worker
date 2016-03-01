@@ -280,7 +280,6 @@
           <section>
             <h2>Lifestyle of a Service Worker: Fetches</h2>
             <p>Once a service worker has been installed and activated, it can listen for any <em>fetch</em> events triggered by the browser within its scope.</p>
-            <p class="fragment">That is, any time the browser wants to fetch an asset that is within the path defined by <em>scope</em>, the registered service worker can hear all about it.</p>
           </section>
 
           <section>
@@ -293,7 +292,7 @@
               <li class="fragment">Do nothing and let the browser handle it in a default way</li>
             </ul>
 
-            <p class="fragment">Basically, a service worker gets to <em>decide</em> how to fulfill requests from the browser, if it so chooses.</p>
+            <p class="fragment">A service worker gets to <em>decide</em> how to fulfill requests from the browser, if it so chooses.</p>
           </section>
 
         </section>
@@ -326,15 +325,12 @@
 
         <section>
           <h2>Handling Fetches</h2>
-          <p>To handle fetches in our theoretical content-heavy site example:</p>
-          <pre><code class="hljs">
-  self.addEventListener('fetch', event => {
-    // 1. Figure out if we should respond to this event at all
-    //    (or let browser do it)
-    // 2. If it's a request for content, take network-first strategy
-    // 3. If it's a request for static assets, take cache-first strategy
-  });
-  </code></pre>
+          <p>The fetch handler for our site should:</p>
+          <ol>
+            <li class="fragment">Figure out if we should respond to the request at all (or let the browser do its default thing)</li>
+            <li class="fragment">If so, respond to the request with the appropriate network strategy</li>
+            <li class="fragment">If we can't satisfy the request, try to respond with an offline fallback</li>
+          </ol>
         </section>
 
         <section>
@@ -350,7 +346,7 @@
 
         <section>
           <h3>event.request</h3>
-          <p>The fetch handler is invoked for each resource request the browser makes. A <em>Request</em> object is available to the fetch handler as <em>event.request</em>. We can use it to answer some of our questions:</p>
+          <p>A <em>Request</em> object is available to the fetch handler as <em>event.request</em>. We can use it to answer some of our questions:</p>
           <pre><code class="hljs">
 self.addEventListener('fetch', event => {
   // event.request is a reference to the Request object
@@ -367,22 +363,19 @@ self.addEventListener('fetch', event => {
 
         <section>
           <h3>Fetch Handler</h3>
-          <pre><code class="hljs">
-self.addEventListener('fetch', event => {
-  // Determine whether we should respond to this fetch
+          <pre><code class="hljs">self.addEventListener('fetch', event => {
+  function shouldHandleFetch(event) { /** ... */ }
   if (!shouldHandleFetch(event)) { return; }
 
   if (fetchResourceType(event) === 'content') {
     // Use a network-first strategy for "content"
     event.respondWith(
-      fetch(request)
-        .catch(() => fetchFromCache(event))
+      fetch(request).catch(() => fetchFromCache(event))
     );
   } else {
     // Use a cache-first strategy for everything else
     event.respondWith(
-      fetchFromCache(event)
-        .catch(() => fetch(request))
+      fetchFromCache(event).catch(() => fetch(request))
     );
   }
 });
